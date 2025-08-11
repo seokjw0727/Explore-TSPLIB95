@@ -13,7 +13,6 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <meta name="description" content="TSPLIB95 인스턴스를 이름/도시 수/거리 타입/대칭 여부로 필터링하고 다운로드하세요." />
   <style>
-    /* 스크롤바 살짝 다듬기 */
     ::-webkit-scrollbar { height: 8px; width: 8px; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
   </style>
@@ -22,42 +21,12 @@
   <div id="app"></div>
 
   <script type="text/babel">
-    // 공식 서버 디렉터리 (HTTPS)
-    const TSPLIB_TSP_DIR = 'https://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp/';
-
-    // 텍스트 내장 데이터(fallback). 실제 서비스에선 /data/tsplib.json 로드됨.
-    // tsplib.json 스키마와 동일한 키(tsp_gz/opt_tour_gz)를 사용하도록 정리.
-    const EMBEDDED_DATA = [
-      {
-        name: 'gr17', type: 'TSP', edge_weight_type: 'EUC_2D', edge_weight_format: 'FUNCTION',
-        dimension: 17, symmetric: true, has_opt_tour: true,
-        files: { tsp_gz: TSPLIB_TSP_DIR + 'gr17.tsp.gz', opt_tour_gz: TSPLIB_TSP_DIR + 'gr17.opt.tour.gz' }
-      },
-      {
-        name: 'wi29', type: 'TSP', edge_weight_type: 'EUC_2D', edge_weight_format: 'FUNCTION',
-        dimension: 29, symmetric: true, has_opt_tour: true,
-        files: { tsp_gz: TSPLIB_TSP_DIR + 'wi29.tsp.gz', opt_tour_gz: TSPLIB_TSP_DIR + 'wi29.opt.tour.gz' }
-      },
-      {
-        name: 'berlin52', type: 'TSP', edge_weight_type: 'EUC_2D', edge_weight_format: 'FUNCTION',
-        dimension: 52, symmetric: true, has_opt_tour: true,
-        files: { tsp_gz: TSPLIB_TSP_DIR + 'berlin52.tsp.gz', opt_tour_gz: TSPLIB_TSP_DIR + 'berlin52.opt.tour.gz' }
-      },
-      {
-        name: 'eil51', type: 'TSP', edge_weight_type: 'EUC_2D', edge_weight_format: 'FUNCTION',
-        dimension: 51, symmetric: true, has_opt_tour: true,
-        files: { tsp_gz: TSPLIB_TSP_DIR + 'eil51.tsp.gz', opt_tour_gz: TSPLIB_TSP_DIR + 'eil51.opt.tour.gz' }
-      }
-    ];
-
-    function classNames(...xs){ return xs.filter(Boolean).join(' '); }
-
+    // CSV 유틸
     function downloadBlob(filename, content, mime='application/octet-stream'){
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([content], {type: mime}));
       a.download = filename; a.click(); URL.revokeObjectURL(a.href);
     }
-
     function toCSV(rows){
       if(!rows.length) return '';
       const headers = Object.keys(rows[0]);
@@ -66,51 +35,55 @@
       for(const r of rows){ lines.push(headers.map(h=>escape(r[h])).join(',')); }
       return lines.join('');
     }
+    function classNames(...xs){ return xs.filter(Boolean).join(' '); }
 
-    // 상대경로가 온 경우를 대비하여 HTTPS 절대경로로 보정
-    function normalizeUrl(u){
-      if(!u) return '';
-      if(/^https?:\/\//i.test(u)) return u;
-      // 예: 'tsp/gr17.tsp.gz' 형태를 절대경로로
-      return (TSPLIB_TSP_DIR.replace(/tsp\/$/, '') + '/' + u.replace(/^\/?/, ''));
+    // 데이터 로드: 임베디드 제거, JSON만 사용
+    function useData(){
+      const [data, setData] = React.useState([]);
+      const [loadedFrom, setLoadedFrom] = React.useState('loading');
+      const [loadError, setLoadError] = React.useState('');
+
+      React.useEffect(()=>{
+        const urlParam = new URLSearchParams(location.search).get('dataset');
+        const candidates = [];
+        if (urlParam) candidates.push(urlParam);
+        candidates.push('./data/tsplib.json');
+        candidates.push('/data/tsplib.json');
+        candidates.push('./tsplib.json');
+        (async ()=>{
+          for (const url of candidates){
+            try {
+              const r = await fetch(url, {cache:'no-store'});
+              if(!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
+              const json = await r.json();
+              if(Array.isArray(json) && json.length>=1){ setData(json); setLoadedFrom(url); return; }
+              throw new Error(`Invalid JSON at ${url}`);
+            } catch(e){ setLoadError(String(e)); console.warn('[TSPLIB] load fail:', e); }
+          }
+          setLoadedFrom('failed');
+        })();
+      },[]);
+
+      return { data, loadedFrom, loadError };
     }
 
     function makeRows(data){
-      return data.map(d => {
-        const tsp = d.files?.tsp_gz || d.files?.tsp; // 구버전 키와 호환
-        const opt = (d.has_opt_tour ? (d.files?.opt_tour_gz || d.files?.opt) : '') || '';
-        return {
-          name: d.name,
-          type: d.type,
-          dimension: d.dimension,
-          edge_weight_type: d.edge_weight_type,
-          symmetric: d.symmetric ? 'SYM' : 'ASYM',
-          tsp_url: normalizeUrl(tsp),
-          opt_url: normalizeUrl(opt)
-        };
-      });
-    }
-
-    function useData(){
-      const [data, setData] = React.useState(EMBEDDED_DATA);
-      const [loadedFrom, setLoadedFrom] = React.useState('embedded');
-
-      React.useEffect(()=>{
-        // /data/tsplib.json 이 있으면 우선 로드. 실패하면 내장 데이터 사용.
-        fetch('./data/tsplib.json', {cache:'no-store'})
-          .then(r=> r.ok ? r.json() : Promise.reject())
-          .then(json=>{ setData(json); setLoadedFrom('data/tsplib.json'); })
-          .catch(()=>{});
-      },[]);
-
-      return { data, loadedFrom };
+      return data.map(d => ({
+        name: d.name,
+        type: d.type,
+        dimension: d.dimension,
+        edge_weight_type: d.edge_weight_type,
+        symmetric: d.symmetric ? 'SYM' : 'ASYM',
+        tsp_url: d.files?.tsp_gz || d.files?.tsp || '',
+        opt_url: (d.has_opt_tour ? (d.files?.opt_tour_gz || d.files?.opt) : '') || ''
+      }));
     }
 
     function App(){
-      const { data, loadedFrom } = useData();
+      const { data, loadedFrom, loadError } = useData();
       const [q, setQ] = React.useState('');
       const [minN, setMinN] = React.useState(0);
-      const [maxN, setMaxN] = React.useState(10000);
+      const [maxN, setMaxN] = React.useState(100000);
       const [edgeType, setEdgeType] = React.useState('');
       const [symOnly, setSymOnly] = React.useState(false);
       const [hasOpt, setHasOpt] = React.useState(false);
@@ -142,20 +115,15 @@
       const curPage = Math.min(page, pageCount);
       const start = (curPage-1)*pageSize;
       const view = filtered.slice(start, start+pageSize);
+      const rows = makeRows(view);
 
       const edgeTypes = React.useMemo(()=>{
         const set = new Set(data.map(d=> (d.edge_weight_type||'').toUpperCase()).filter(Boolean));
         return Array.from(set).sort();
       }, [data]);
 
-      const rows = makeRows(view);
-
-      const exportAll = () => {
-        downloadBlob('tsplib_filtered.json', JSON.stringify(filtered, null, 2), 'application/json');
-      };
-      const exportCSV = () => {
-        downloadBlob('tsplib_filtered.csv', toCSV(makeRows(filtered)), 'text/csv');
-      };
+      const exportAll = () => { downloadBlob('tsplib_filtered.json', JSON.stringify(filtered, null, 2), 'application/json'); };
+      const exportCSV = () => { downloadBlob('tsplib_filtered.csv', toCSV(makeRows(filtered)), 'text/csv'); };
 
       const headerCell = (key, label) => (
         <th className="px-3 py-2 text-left text-sm font-semibold text-slate-700 cursor-pointer select-none"
@@ -171,8 +139,12 @@
         <div className="max-w-6xl mx-auto p-4 sm:p-6">
           <header className="mb-4">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">TSPLIB95 Search</h1>
-            <p className="text-slate-600 mt-1">원하는 문제를 찾아보세요. <span className="text-xs">(data source: <code>{loadedFrom}</code>)</span></p>
+            <p className="text-slate-600 mt-1 text-sm">
+              (data source: <code>{loadedFrom}</code>)
+              {loadError && <span className="ml-2 text-red-600">로드 실패: {loadError.split('')[0]}</span>}
+            </p>
           </header>
+
           <section className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-end bg-white p-4 rounded-2xl shadow">
             <div className="md:col-span-4">
               <label className="block text-sm font-medium mb-1">이름</label>
@@ -249,7 +221,9 @@
                     </tr>
                   ))}
                   {rows.length === 0 && (
-                    <tr><td className="px-3 py-6 text-center text-slate-500" colSpan={6}>조건에 맞는 인스턴스가 없습니다.</td></tr>
+                    <tr><td className="px-3 py-6 text-center text-slate-500" colSpan={6}>
+                      {loadedFrom==='loading' ? '로딩 중…' : (loadError ? '데이터 로드 실패 — tsplib.json 경로를 확인하세요.' : '조건에 맞는 인스턴스가 없습니다.')}
+                    </td></tr>
                   )}
                 </tbody>
               </table>
@@ -257,7 +231,7 @@
           </section>
 
           <footer className="text-xs text-slate-500 mt-6">
-            <p><img src="img/github_logo.png" class="inline-block" alt=""/> <a href="https://github.com/seokjw0727" target="_blank" rel="noreferrer">seokjw0727</a></p>
+            <p><img src="github_logo.png" class="inline-block" alt=""/> <a href="https://github.com/seokjw0727/TSPLIB95-Search" target="_blank" rel="noreferrer">seokjw0727</a></p>
           </footer>
         </div>
       );
