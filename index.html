@@ -22,29 +22,31 @@
   <div id="app"></div>
 
   <script type="text/babel">
-    const BASE_URL = 'http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/';
+    // 공식 서버 디렉터리 (HTTPS)
+    const TSPLIB_TSP_DIR = 'https://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp/';
 
-    // \uD14C\uC2A4\uD2B8용 내장 데이터 (fallback). 실제 서비스에선 /data/tsplib.json 로 교체 가능.
+    // 텍스트 내장 데이터(fallback). 실제 서비스에선 /data/tsplib.json 로드됨.
+    // tsplib.json 스키마와 동일한 키(tsp_gz/opt_tour_gz)를 사용하도록 정리.
     const EMBEDDED_DATA = [
       {
         name: 'gr17', type: 'TSP', edge_weight_type: 'EUC_2D', edge_weight_format: 'FUNCTION',
         dimension: 17, symmetric: true, has_opt_tour: true,
-        files: { tsp: 'tsp/gr17.tsp.gz', opt: 'tsp/gr17.opt.tour' }
+        files: { tsp_gz: TSPLIB_TSP_DIR + 'gr17.tsp.gz', opt_tour_gz: TSPLIB_TSP_DIR + 'gr17.opt.tour.gz' }
       },
       {
         name: 'wi29', type: 'TSP', edge_weight_type: 'EUC_2D', edge_weight_format: 'FUNCTION',
         dimension: 29, symmetric: true, has_opt_tour: true,
-        files: { tsp: 'tsp/wi29.tsp.gz', opt: 'tsp/wi29.opt.tour' }
+        files: { tsp_gz: TSPLIB_TSP_DIR + 'wi29.tsp.gz', opt_tour_gz: TSPLIB_TSP_DIR + 'wi29.opt.tour.gz' }
       },
       {
         name: 'berlin52', type: 'TSP', edge_weight_type: 'EUC_2D', edge_weight_format: 'FUNCTION',
         dimension: 52, symmetric: true, has_opt_tour: true,
-        files: { tsp: 'tsp/berlin52.tsp.gz', opt: 'tsp/berlin52.opt.tour' }
+        files: { tsp_gz: TSPLIB_TSP_DIR + 'berlin52.tsp.gz', opt_tour_gz: TSPLIB_TSP_DIR + 'berlin52.opt.tour.gz' }
       },
       {
         name: 'eil51', type: 'TSP', edge_weight_type: 'EUC_2D', edge_weight_format: 'FUNCTION',
         dimension: 51, symmetric: true, has_opt_tour: true,
-        files: { tsp: 'tsp/eil51.tsp.gz', opt: 'tsp/eil51.opt.tour' }
+        files: { tsp_gz: TSPLIB_TSP_DIR + 'eil51.tsp.gz', opt_tour_gz: TSPLIB_TSP_DIR + 'eil51.opt.tour.gz' }
       }
     ];
 
@@ -62,21 +64,32 @@
       const escape = v => '"' + String(v ?? '').replace(/"/g,'""') + '"';
       const lines = [headers.join(',')];
       for(const r of rows){ lines.push(headers.map(h=>escape(r[h])).join(',')); }
-      return lines.join('\n');
+      return lines.join('');
+    }
+
+    // 상대경로가 온 경우를 대비하여 HTTPS 절대경로로 보정
+    function normalizeUrl(u){
+      if(!u) return '';
+      if(/^https?:\/\//i.test(u)) return u;
+      // 예: 'tsp/gr17.tsp.gz' 형태를 절대경로로
+      return (TSPLIB_TSP_DIR.replace(/tsp\/$/, '') + '/' + u.replace(/^\/?/, ''));
     }
 
     function makeRows(data){
-      return data.map(d => ({
-        name: d.name,
-        type: d.type,
-        dimension: d.dimension,
-        edge_weight_type: d.edge_weight_type,
-        symmetric: d.symmetric ? 'SYM' : 'ASYM',
-        tsp_url: d.files?.tsp_gz || '',
-        opt_url: (d.has_opt_tour ? d.files?.opt_tour_gz : '') || ''
-      }));
+      return data.map(d => {
+        const tsp = d.files?.tsp_gz || d.files?.tsp; // 구버전 키와 호환
+        const opt = (d.has_opt_tour ? (d.files?.opt_tour_gz || d.files?.opt) : '') || '';
+        return {
+          name: d.name,
+          type: d.type,
+          dimension: d.dimension,
+          edge_weight_type: d.edge_weight_type,
+          symmetric: d.symmetric ? 'SYM' : 'ASYM',
+          tsp_url: normalizeUrl(tsp),
+          opt_url: normalizeUrl(opt)
+        };
+      });
     }
-
 
     function useData(){
       const [data, setData] = React.useState(EMBEDDED_DATA);
@@ -109,8 +122,8 @@
       const filtered = React.useMemo(()=>{
         const s = q.trim().toLowerCase();
         let arr = data.filter(d=>
-          (!s || d.name.toLowerCase().includes(s)) &&
-          (d.dimension >= minN && d.dimension <= maxN) &&
+          (!s || (d.name||'').toLowerCase().includes(s)) &&
+          (Number(d.dimension)||0) >= minN && (Number(d.dimension)||0) <= maxN &&
           (!edgeType || (d.edge_weight_type||'').toUpperCase() === edgeType) &&
           (!symOnly || d.symmetric === true) &&
           (!hasOpt || d.has_opt_tour === true)
@@ -158,7 +171,7 @@
         <div className="max-w-6xl mx-auto p-4 sm:p-6">
           <header className="mb-4">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">TSPLIB95 Search</h1>
-            <p className="text-slate-600 mt-1">원하는 문제를 찾아보세요.<span className="text-xs">(data source: <code>{loadedFrom}</code>)</span></p>
+            <p className="text-slate-600 mt-1">원하는 문제를 찾아보세요. <span className="text-xs">(data source: <code>{loadedFrom}</code>)</span></p>
           </header>
           <section className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-end bg-white p-4 rounded-2xl shadow">
             <div className="md:col-span-4">
@@ -229,8 +242,8 @@
                       <td className="px-3 py-2">{r.symmetric}</td>
                       <td className="px-3 py-2">
                         <div className="flex flex-wrap gap-2">
-                          {r.tsp_url ? <a className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200" href={r.tsp_url} target="_blank">.tsp</a> : <span className="text-slate-400">—</span>}
-                          {r.opt_url ? <a className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200" href={r.opt_url} target="_blank">.opt.tour</a> : <span className="text-slate-400">—</span>}
+                          {r.tsp_url ? <a className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200" href={r.tsp_url} target="_blank">.tsp.gz</a> : <span className="text-slate-400">—</span>}
+                          {r.opt_url ? <a className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200" href={r.opt_url} target="_blank">.opt.tour.gz</a> : <span className="text-slate-400">—</span>}
                         </div>
                       </td>
                     </tr>
@@ -244,7 +257,7 @@
           </section>
 
           <footer className="text-xs text-slate-500 mt-6">
-            <p> <img src="img/github_logo.png" class="inline-block"/> <a href="https://github.com/seokjw0727/TSPLIB95-Search" target="_blank">seokjw0727</a></p>
+            <p><img src="img/github_logo.png" class="inline-block" alt=""/> <a href="https://github.com/seokjw0727/TSPLIB95-Search" target="_blank" rel="noreferrer">seokjw0727</a></p>
           </footer>
         </div>
       );
