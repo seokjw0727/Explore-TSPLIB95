@@ -1,17 +1,14 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TSPLIB95 Search</title>
-  <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React (CDN) -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <!-- Babel for JSX in-browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <meta name="description" content="TSPLIB95 인스턴스를 이름/도시 수/거리 타입/대칭 여부로 필터링하고 다운로드하세요." />
+  <meta name="description" content="You can download TSP instances from TSPLIB95." />
   <style>
     ::-webkit-scrollbar { height: 8px; width: 8px; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
@@ -19,14 +16,13 @@
 </head>
 <body class="bg-slate-50 text-slate-900">
   <div id="app"></div>
-
   <script type="text/babel">
-    // CSV 유틸
     function downloadBlob(filename, content, mime='application/octet-stream'){
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([content], {type: mime}));
       a.download = filename; a.click(); URL.revokeObjectURL(a.href);
     }
+
     function toCSV(rows){
       if(!rows.length) return '';
       const headers = Object.keys(rows[0]);
@@ -35,9 +31,9 @@
       for(const r of rows){ lines.push(headers.map(h=>escape(r[h])).join(',')); }
       return lines.join('');
     }
+
     function classNames(...xs){ return xs.filter(Boolean).join(' '); }
 
-    // 데이터 로드: 임베디드 제거, JSON만 사용
     function useData(){
       const [data, setData] = React.useState([]);
       const [loadedFrom, setLoadedFrom] = React.useState('loading');
@@ -140,19 +136,18 @@
           <header className="mb-4">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">TSPLIB95 Search</h1>
             <p className="text-slate-600 mt-1 text-sm">
-              (data source: <code>{loadedFrom}</code>)
-              {loadError && <span className="ml-2 text-red-600">로드 실패: {loadError.split('')[0]}</span>}
+              {loadError && <span className="ml-2 text-red-600">load failed: {loadError.split('')[0]}</span>}
             </p>
           </header>
 
           <section className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-end bg-white p-4 rounded-2xl shadow">
             <div className="md:col-span-4">
-              <label className="block text-sm font-medium mb-1">이름</label>
+              <label className="block text-sm font-medium mb-1">Name</label>
               <input className="w-full rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                     placeholder="예: gr17, wi29, berlin52" value={q} onChange={e=>{ setQ(e.target.value); setPage(1); }} />
+                     placeholder="e.g. gr17" value={q} onChange={e=>{ setQ(e.target.value); setPage(1); }} />
             </div>
             <div className="md:col-span-3">
-              <label className="block text-sm font-medium mb-1">도시 개수</label>
+              <label className="block text-sm font-medium mb-1">Number of Cities</label>
               <div className="flex items-center gap-2">
                 <input type="number" className="w-24 rounded-lg border border-slate-200 px-2 py-1" value={minN}
                        onChange={e=>{ setMinN(Number(e.target.value)||0); setPage(1); }} />
@@ -162,10 +157,10 @@
               </div>
             </div>
             <div className="md:col-span-3">
-              <label className="block text-sm font-medium mb-1">거리 타입</label>
+              <label className="block text-sm font-medium mb-1">Edge Weight Type</label>
               <select className="w-full rounded-xl border border-slate-200 px-3 py-2" value={edgeType}
                       onChange={e=>{ setEdgeType(e.target.value); setPage(1); }}>
-                <option value="">전체</option>
+                <option value="">All</option>
                 {edgeTypes.map(t=> <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
@@ -181,10 +176,10 @@
             </div>
 
             <div className="md:col-span-12 flex items-center justify-between gap-2 pt-2">
-              <div className="text-sm text-slate-600">총 <b>{total}</b>개 · 페이지 {curPage}/{pageCount}</div>
+              <div className="text-sm text-slate-600">Total: <b>{total}</b> · Page {curPage}/{pageCount}</div>
               <div className="flex gap-2">
-                <button className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200" onClick={()=>setPage(p=>Math.max(1,p-1))}>이전</button>
-                <button className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200" onClick={()=>setPage(p=>Math.min(pageCount,p+1))}>다음</button>
+                <button className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200" onClick={()=>setPage(p=>Math.max(1,p-1))}>←</button>
+                <button className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200" onClick={()=>setPage(p=>Math.min(pageCount,p+1))}>→</button>
                 <button className="px-3 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700" onClick={exportCSV}>CSV</button>
                 <button className="px-3 py-2 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100" onClick={exportAll}>JSON</button>
               </div>
@@ -196,12 +191,12 @@
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    {headerCell('name','이름')}
-                    {headerCell('dimension','도시 수')}
-                    {headerCell('edge_weight_type','거리 타입')}
-                    {headerCell('type','유형')}
-                    {headerCell('symmetric','대칭')}
-                    <th className="px-3 py-2 text-left text-sm font-semibold text-slate-700">다운로드</th>
+                    {headerCell('name','Name')}
+                    {headerCell('dimension','Number of Cities')}
+                    {headerCell('edge_weight_type','Distance Type')}
+                    {headerCell('type','Type')}
+                    {headerCell('symmetric','Symmetry')}
+                    <th className="px-3 py-2 text-left text-sm font-semibold text-slate-700">Download(.gz)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -214,15 +209,15 @@
                       <td className="px-3 py-2">{r.symmetric}</td>
                       <td className="px-3 py-2">
                         <div className="flex flex-wrap gap-2">
-                          {r.tsp_url ? <a className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200" href={r.tsp_url} target="_blank">.tsp.gz</a> : <span className="text-slate-400">—</span>}
-                          {r.opt_url ? <a className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200" href={r.opt_url} target="_blank">.opt.tour.gz</a> : <span className="text-slate-400">—</span>}
+                          {r.tsp_url ? <a className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200" href={r.tsp_url} target="_blank">.tsp</a> : <span className="text-slate-400">—</span>}
+                          {r.opt_url ? <a className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200" href={r.opt_url} target="_blank">.opt.tour</a> : <span className="text-slate-400">—</span>}
                         </div>
                       </td>
                     </tr>
                   ))}
                   {rows.length === 0 && (
                     <tr><td className="px-3 py-6 text-center text-slate-500" colSpan={6}>
-                      {loadedFrom==='loading' ? '로딩 중…' : (loadError ? '데이터 로드 실패 — tsplib.json 경로를 확인하세요.' : '조건에 맞는 인스턴스가 없습니다.')}
+                      {loadedFrom==='loading' ? 'Loading…' : (loadError ? 'Failed to load data — please check the tsplib.json path.' : 'No instances found matching the criteria.')}
                     </td></tr>
                   )}
                 </tbody>
@@ -231,7 +226,7 @@
           </section>
 
           <footer className="text-xs text-slate-500 mt-6">
-            <p><img src="github_logo.png" class="inline-block" alt=""/> <a href="https://github.com/seokjw0727/TSPLIB95-Search" target="_blank" rel="noreferrer">seokjw0727</a></p>
+            <p><img src="img/github_logo.png" class="inline-block" alt=""/> <a href="https://github.com/seokjw0727/TSPLIB95-Search" target="_blank" rel="noreferrer">seokjw0727</a></p>
           </footer>
         </div>
       );
