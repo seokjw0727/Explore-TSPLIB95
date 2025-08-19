@@ -1,14 +1,31 @@
-# TSPLIB95 Benchmark Explore Service
+### Explore TSPLIB95
 
-Site: https://exploretsp.netlify.app
-
-This repository is a web service for searching and downloading Traveling Salesman Problem (TSP) benchmarks based on the [TSPLIB95](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/) dataset.  
-It was created for research and educational purposes. Please make sure to refer to the license and attribution requirements below when using the data or code.
-
-- This project is intended **for research and educational purposes only**.
-- TSPLIB95 data may only be used within the scope permitted by the original authors.
-- Commercial use may require separate legal review and explicit permission from the original authors.
+> This repository provides a structured exploration of TSPLIB95, a widely used benchmark library for the Travelling Salesman Problem (TSP) and related combinatorial optimization tasks. The aim of this project is to facilitate the systematic analysis, parsing, and visualization of TSPLIB95 instances, enabling both researchers and students to engage with the dataset in a reproducible and academically rigorous manner.
 
 ---
 
-> G. Reinelt, "TSPLIB — A traveling salesman problem library“, *ORSA Journal on Computing*, vol. 3, no. 4, pp. 376–384, 1991. [Online]. Available: http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/
+**📁 Repository Structure**
+
+```
+Explore-TSPLIB95/
+├─ data/        # .tsp data
+├─ img/         # image files
+├─ tsp/         # .tsp list from TSPLIB95
+├─ LICENSE      # LICENSE
+├─ LICENSE.md   # LICENSE 
+├─ README.md    # README
+└─ index.html   # main page
+```
+
+
+**🔗 Link**
+
+https://www.exploretsp.netlify.app/
+
+
+**🙌 Acknowledgements**
+
+- [TSPLIB95](https://www.math.uwaterloo.ca/tsp/tsplib95/)
+<br>
+
+*Any feedback or issues should be directed to the GitHub Issues.*
