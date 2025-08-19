@@ -20,7 +20,7 @@ Explore-TSPLIB95/
 
 **🔗 Link**
 
-https://www.exploretsp.netlify.app/
+http://www.exploretsp.netlify.app/
 
 
 **🙌 Acknowledgements**
